@@ -1,48 +1,70 @@
 <script>
-  import { onMount } from "svelte";
-  export let date;
+  import { fetchData } from "./airtable.js";
 
-  onMount(async () => {
-    const res = await fetch("/api/date");
-    const newDate = await res.text();
-    date = newDate;
-  });
+  async function parseData(data) {
+    data = await data.then((data) => {
+      data = sortByTypes(data);
+      return data;
+    });
+    console.log(data);
+    return data;
+  }
+
+  function sortByTypes(data) {
+    let group = {};
+
+    data.forEach(({ Types, ...rest }) => {
+      group[Types] = group[Types] || {
+        Types,
+        name: Types,
+        content: [],
+      };
+      group[Types].content.push(rest);
+    });
+    let result = Object.values(group);
+    result.forEach((r) => {
+      delete r["Types"];
+    });
+    return result;
+  }
+
+  $: data = fetchData;
+  $: displayData = parseData(data);
 </script>
 
-<main>
-  <h1>Svelte + Node.js API</h1>
-  <h2>
-    Deployed with
-    <a href="https://vercel.com/docs" target="_blank" rel="noreferrer noopener">
-      Vercel
-    </a>
-    !
-  </h2>
-  <p>
-    <a
-      href="https://github.com/vercel/vercel/tree/main/examples/svelte"
-      target="_blank"
-      rel="noreferrer noopener">
-      This project
-    </a>
-    is a
-    <a href="https://svelte.dev/">Svelte</a>
-    app with three directories,
-    <code>/public</code>
-    for static assets,
-    <code>/src</code>
-    for components and content, and
-    <code>/api</code>
-    which contains a serverless
-    <a href="https://nodejs.org/en/">Node.js</a>
-    function. See
-    <a href="/api/date">
-      <code>api/date</code>
-      for the Date API with Node.js
-    </a>
-    .
-  </p>
-  <br />
-  <h2>The date according to Node.js is:</h2>
-  <p>{date ? date : 'Loading date...'}</p>
-</main>
+<h1>Courroies trapézoïdales</h1>
+{#await displayData}
+  <p>Loading</p>
+{:then data}
+  <form>
+    <fieldset>
+      <legend>Courroies trapézoïdales</legend>
+      <select>
+        {#each data as section}
+          <option value={section["name"]}>{section["name"]}</option>
+        {/each}
+      </select>
+    </fieldset>
+  </form>
+  {#each data as type}
+    <h2>{type["name"]}</h2>
+    {#each type["content"] as section}
+      <details>
+        <summary>{section["Name"]}</summary>
+        <div>
+          {#each section["Longueurs primitives"].split(" ") as longueur}
+            <span class={longueur >= parseInt(section["DYNAM"]) ? "dynam" : ""}
+              >{longueur + " "}</span
+            >
+          {/each}
+        </div>
+      </details>
+    {/each}
+  {/each}
+{/await}
+
+<style>
+  .dynam {
+    color: red;
+  }
+</style>
